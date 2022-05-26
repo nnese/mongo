@@ -1,28 +1,73 @@
 
 const User = require('../models/User');
-
-const register = async (req,res,next) => {
+const CustomError = require('../helpers/error/CustomError');
+const asyncErrorWrapper = require("express-async-handler");
+const { sendJwtToClient } = require("../helpers/authorization/tokenHelpers");
+const { validateUserInput, comparePassword } = require("../helpers/input/inputHelpers");
+const register = asyncErrorWrapper(async (req, res, next) => {
     //POST DATA
-    const name = "Mustafa Yüksel";
-    const email = "musti@gmail.com";
-    const password = "1234345";
 
+    const { name, email, password, role } = req.body;
 
-    //async await
-   const user = await User.create({
+    const user = await User.create({
         name,
         email,
-        password
+        password,
+        role
     });
+    sendJwtToClient(user, res);
 
-    res
-    .status(200)
-    .json({
+
+});
+
+const login = asyncErrorWrapper(async (req, res, next) => {
+    //POST DATA
+
+    const { email, password } = req.body;
+
+
+    if (!validateUserInput(email, password)) {
+        return next(new CustomError("Please check your inputs", 400));
+    }
+
+    const user = await User.findOne({ email }).select("+password");
+
+    if (!comparePassword(password, user.password)) {
+        return next(new CustomError("Please check your credentials", 400));
+    }
+    sendJwtToClient(user, res);
+
+});
+
+const logout = asyncErrorWrapper(async (req, res, next) => {
+    const { JWT_COOKIE_EXPIRE, NODE_ENV } = process.env;
+
+    return res.status(200)
+        .cookie({
+            httpOnly: true,
+            expires: new Date(Date.now),
+            secure: NODE_ENV === "development" ? false : true
+        }).json({
+            success: true,
+            message: "Logout Successfull"
+        })
+
+
+});
+
+const getUser = (req, res, next) => {
+    res.json({
         success: true,
-        data: user
+        data: {
+            id: req.user.id,
+            name: req.user.name
+        }
     });
-};
+}
 
 module.exports = {
-    register
+    register,
+    login,
+    getUser,
+    logout
 };
