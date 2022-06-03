@@ -143,7 +143,7 @@ const resetPassword = asyncErrorWrapper(async (req, res, next) => {
     if (!user) {
         return next(new CustomError("Invalid token or session expired", 404));
     }
-    
+
     user.password = password;
     user.resetPasswordToken = undefined;
     user.resetPasswordExpire = undefined;
@@ -158,6 +158,24 @@ const resetPassword = asyncErrorWrapper(async (req, res, next) => {
 
 });
 
+const editDetails = asyncErrorWrapper(async (req, res, next) => {
+    //POST DATA
+
+    const editInformation = req.body;
+
+    const user = await User.findByIdAndUpdate(req.user.id, editInformation, {
+        new: true,
+        runValidators: true
+    });
+
+    return res.status(200)
+        .json({
+            success: true,
+            data: user
+        });
+
+});
+
 module.exports = {
     register,
     login,
@@ -165,5 +183,6 @@ module.exports = {
     logout,
     imageUpload,
     forgotPassword,
-    resetPassword
+    resetPassword,
+    editDetails
 };
