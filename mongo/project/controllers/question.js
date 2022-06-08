@@ -3,7 +3,29 @@ const CustomError = require('../helpers/error/CustomError');
 const asyncErrorWrapper = require("express-async-handler");
 
 const getAllQuestions = asyncErrorWrapper(async (req, res, next) => {
-    const questions = await Question.find();
+
+    let query = Question.find();
+    const populate = true;
+    const populateObject = {
+        path: "user",
+        select: "name profile_image"
+    };
+    if (req.query.search) {
+        const searchObject = {};
+        //title searchValue
+        const regex = new RegExp(req.query.search, "i");
+        searchObject["title"] = regex;
+
+        query = query.where(searchObject);
+    }
+
+    if (populate) {
+        query = query.populate(populateObject);
+    }
+
+    const questions = await query;
+    // const questions = await Question.find().where({title : "Questions 1 - Title"});
+
 
     return res.status(200)
         .json({
