@@ -4,6 +4,7 @@ const User = require("../../models/User");
 const asyncErrorWrapper = require("express-async-handler");
 const { isTokenIncluded, getAccessTokenFromHeader } = require("../../helpers/authorization/tokenHelpers");
 const Question = require("../../models/Question");
+const Answer = require("../../models/Answer");
 
 const getAccessToRoute = (req, res, next) => {
 
@@ -18,7 +19,7 @@ const getAccessToRoute = (req, res, next) => {
 
     jwt.verify(accessToken, JWT_SECRET_KEY, (err, decoded) => {
         if (err) {
-            console.log("2");
+
             return next(new CustomError("You are not authorized to access this route", 401)
             );
         }
@@ -57,8 +58,23 @@ const getQuestionOwnerAccess = asyncErrorWrapper(async (req, res, next) => {
 
 });
 
+const getAnswerOwnerAccess = asyncErrorWrapper(async (req, res, next) => {
+
+    const userId = req.user.id;
+    
+    const answerId = req.params.answer_id;
+
+    const answer = await Answer.findById(answerId);
+    if (answer.user != userId) {
+        return next(new CustomError("Only owner can handle this operation", 403));
+    }
+    next();
+
+});
+
 module.exports = {
     getAccessToRoute,
     getAdminAccess,
-    getQuestionOwnerAccess
+    getQuestionOwnerAccess,
+    getAnswerOwnerAccess
 }
