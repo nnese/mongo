@@ -19,8 +19,51 @@ const getAllQuestions = asyncErrorWrapper(async (req, res, next) => {
         query = query.where(searchObject);
     }
 
+    //Populate
+
     if (populate) {
         query = query.populate(populateObject);
+    }
+
+    //Pagination
+
+    const page = parseInt(req.query.page);
+    const limit = parseInt(req.query.limit);
+
+    const startIndex = (page - 1) + limit;
+    const endIndex = page * limit;
+
+    const pagination = {};
+    const total = await Question.countDocuments();
+
+    if (startIndex > 0) {
+        pagination.previous = {
+            page: page - 1,
+            limit: limit
+        }
+    }
+
+    if (endIndex < total) {
+        pagination.next = {
+            page: page + 1,
+            limit: limit
+        }
+    }
+
+    query = query.skip(startIndex).limit(limit);
+
+    //Sort
+
+    const sortKey = req.query.sortBy;
+
+    if (sortKey === "most-answered") {
+        query = query.sort("-answerCount -createdAt");
+    }
+    if (sortKey === "most-liked") {
+        query = query.sort("-likeCount -createdAt");
+    }
+    else {
+        query = query.sort("-createdAt");
     }
 
     const questions = await query;
@@ -30,6 +73,8 @@ const getAllQuestions = asyncErrorWrapper(async (req, res, next) => {
     return res.status(200)
         .json({
             success: true,
+            count: questions.length,
+            pagination: pagination,
             data: questions
         });
 });
@@ -100,6 +145,7 @@ const likeQuestion = asyncErrorWrapper(async (req, res, next) => {
         return next(new CustomError("You already liked this question", 400));
     }
     question.likes.push(req.user.id);
+    question.likeCount = question.likes.length;
 
     await question.save();
 
@@ -122,6 +168,7 @@ const undoLikeQuestion = asyncErrorWrapper(async (req, res, next) => {
     const index = question.likes.indexOf(req.user.id);
 
     question.likes.splice(index, 1);
+    question.likeCount = question.likes.length;
 
     await question.save();
 
